@@ -1,4 +1,4 @@
-package goncurrence
+package goncurrency
 
 import (
 	"errors"

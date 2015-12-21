@@ -1,4 +1,4 @@
-package goncurrence
+package goncurrency
 
 // ProcessHandler is an interface to execute the job process
 // Worker executes Exec() error function

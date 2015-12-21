@@ -1,10 +1,10 @@
-# goncurrence
+# goncurrency
 
-[![Build Status](https://travis-ci.org/sk88ks/goncurrence.svg?branch=master)](https://travis-ci.org/sk88ks/goncurrence)
+[![Build Status](https://travis-ci.org/sk88ks/goncurrency.svg?branch=master)](https://travis-ci.org/sk88ks/goncurrency)
  
-[![Coverage Status](https://coveralls.io/repos/sk88ks/goncurrence/badge.svg?branch=master&service=github)](https://coveralls.io/github/sk88ks/goncurrence?branch=master)
+[![Coverage Status](https://coveralls.io/repos/sk88ks/goncurrency/badge.svg?branch=master&service=github)](https://coveralls.io/github/sk88ks/goncurrency?branch=master)
 
-Goncurrence enables you to implement concurrnt processes more simple.
+goncurrency enables you to implement concurrnt processes more simple.
 
 Current API Documents:
 
@@ -12,7 +12,7 @@ Installation
 ----
 
 ```
-go get github.com/sk88ks/goncurrence
+go get github.com/sk88ks/goncurrency
 ```
  
 Quick start
@@ -24,25 +24,25 @@ To create a new client and concurrntly execute processes
 import(
   "fmt"
   "runtime"
-  "github.com/sk88ks/goncurrence"
+  "github.com/sk88ks/goncurrency"
 )
 
 	workerNum := runtime.NumCPU()
-	w := goncurrence.New(workerNum)
+	w := goncurrency.New(workerNum)
 
 	// DefaultProcess implementing ProcessHandler interface
-	processes := []goncurrence.DefaultProcess{
-		goncurrence.DefaultProcess{
+	processes := []goncurrency.DefaultProcess{
+		goncurrency.DefaultProcess{
 			Func: func() (interface{}, error) {
 				return "result 0", nil
 			},
 		},
-		goncurrence.DefaultProcess{
+		goncurrency.DefaultProcess{
 			Func: func() (interface{}, error) {
 				return "result 1", nil
 			},
 		},
-		goncurrence.DefaultProcess{
+		goncurrency.DefaultProcess{
 			Func: func() (interface{}, error) {
 				return "result 2", nil
 			},

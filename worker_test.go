@@ -123,3 +123,35 @@ func TestRun(t *testing.T) {
 		})
 	})
 }
+
+func TestErrs(t *testing.T) {
+	Convey("Given worker manager with stacked errors", t, func() {
+		f := func(num int) func() (interface{}, error) {
+			return func() (interface{}, error) {
+				return nil, errors.New("Invalid param" + strconv.Itoa(num))
+			}
+		}
+
+		w := New(2)
+		w.IsUnordered()
+		ps := make([]DefaultProcess, 3)
+		for i := 0; i < 3; i++ {
+			p := DefaultProcess{
+				Func: f(i),
+			}
+			ps[i] = p
+			w.Add(&ps[i])
+		}
+		err := w.Run()
+
+		Convey("When getting stacked errs", func() {
+			errs := w.Errs()
+
+			Convey("Then all errors should be returned", func() {
+				So(len(errs), ShouldEqual, 3)
+				So(err.Error(), ShouldEqual, errs[2].Error())
+
+			})
+		})
+	})
+}

@@ -1,7 +1,6 @@
 # goncurrency
 
 [![Build Status](https://travis-ci.org/sk88ks/goncurrency.svg?branch=master)](https://travis-ci.org/sk88ks/goncurrency)
- 
 [![Coverage Status](https://coveralls.io/repos/sk88ks/goncurrency/badge.svg?branch=master&service=github)](https://coveralls.io/github/sk88ks/goncurrency?branch=master)
 
 goncurrency enables you to implement concurrnt processes more simple.

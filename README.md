@@ -30,18 +30,18 @@ import(
 	w := goncurrency.New(workerNum)
 
 	// DefaultProcess implementing ProcessHandler interface
-	processes := []goncurrency.DefaultProcess{
-		goncurrency.DefaultProcess{
+	processes := []*goncurrency.DefaultProcess{
+		&goncurrency.DefaultProcess{
 			Func: func() (interface{}, error) {
 				return "result 0", nil
 			},
 		},
-		goncurrency.DefaultProcess{
+		&goncurrency.DefaultProcess{
 			Func: func() (interface{}, error) {
 				return "result 1", nil
 			},
 		},
-		goncurrency.DefaultProcess{
+		&goncurrency.DefaultProcess{
 			Func: func() (interface{}, error) {
 				return "result 2", nil
 			},
@@ -49,7 +49,7 @@ import(
 	}
 
 	for i := range processes {
-		w.Add(&processes[i])
+		w.Add(processes[i].Exec)
 	}
 
 	err := w.Run()

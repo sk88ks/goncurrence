@@ -1,10 +1,7 @@
 package goncurrency
 
-// ProcessHandler is an interface to execute the job process
-// Worker executes Exec() error function
-type ProcessHandler interface {
-	Exec() error
-}
+// ProcessFunc is an function that would be executed as a process
+type ProcessFunc func() error
 
 // WorkerManager is workers manager
 type WorkerManager struct {
@@ -16,7 +13,7 @@ type WorkerManager struct {
 	do         chan struct{}
 	done       chan struct{}
 	end        chan struct{}
-	process    chan ProcessHandler
+	process    chan ProcessFunc
 	err        chan error
 }
 
@@ -45,7 +42,7 @@ func New(workerNum int) *WorkerManager {
 		do:        make(chan struct{}),
 		done:      make(chan struct{}),
 		end:       make(chan struct{}),
-		process:   make(chan ProcessHandler),
+		process:   make(chan ProcessFunc),
 		err:       make(chan error),
 	}
 
@@ -62,7 +59,7 @@ func (w *WorkerManager) startWorker() {
 	for {
 		select {
 		case p := <-w.process:
-			err := p.Exec()
+			err := p()
 			if err != nil {
 				w.err <- err
 			}
@@ -79,11 +76,13 @@ func (w *WorkerManager) IsUnordered() {
 }
 
 // Add adds a new process handler to be executed
-func (w *WorkerManager) Add(p ProcessHandler) *WorkerManager {
-	go func() {
-		w.process <- p
-	}()
-	w.addCount++
+func (w *WorkerManager) Add(ps ...ProcessFunc) *WorkerManager {
+	for i := range ps {
+		go func() {
+			w.process <- ps[i]
+		}()
+		w.addCount++
+	}
 	return w
 }
 

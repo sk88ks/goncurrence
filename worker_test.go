@@ -59,7 +59,7 @@ func TestRun(t *testing.T) {
 					Func: f("Message", i),
 				}
 				ps[i] = p
-				w.Add(&ps[i])
+				w.Add(ps[i].Exec)
 			}
 			err := w.Run()
 
@@ -74,17 +74,17 @@ func TestRun(t *testing.T) {
 
 		Convey("When adding and run with invalid process", func() {
 			w := New(2)
-			ps := make([]DefaultProcess, 3)
+			ps := make([]*DefaultProcess, 3)
 			for i := 0; i < 3; i++ {
 				num := i
 				if i == 2 {
 					num = 99
 				}
-				p := DefaultProcess{
+				p := &DefaultProcess{
 					Func: f("Message", num),
 				}
 				ps[i] = p
-				w.Add(&ps[i])
+				w.Add(ps[i].Exec)
 			}
 			err := w.Run()
 
@@ -97,17 +97,17 @@ func TestRun(t *testing.T) {
 		Convey("When adding and run with invalid process as unordered", func() {
 			w := New(2)
 			w.IsUnordered()
-			ps := make([]DefaultProcess, 3)
+			ps := make([]*DefaultProcess, 3)
 			for i := 0; i < 3; i++ {
 				num := i
 				if i == 2 {
 					num = 99
 				}
-				p := DefaultProcess{
+				p := &DefaultProcess{
 					Func: f("Message", num),
 				}
 				ps[i] = p
-				w.Add(&ps[i])
+				w.Add(ps[i].Exec)
 			}
 			err := w.Run()
 
@@ -134,13 +134,13 @@ func TestErrs(t *testing.T) {
 
 		w := New(2)
 		w.IsUnordered()
-		ps := make([]DefaultProcess, 3)
+		ps := make([]*DefaultProcess, 3)
 		for i := 0; i < 3; i++ {
-			p := DefaultProcess{
+			p := &DefaultProcess{
 				Func: f(i),
 			}
 			ps[i] = p
-			w.Add(&ps[i])
+			w.Add(ps[i].Exec)
 		}
 		err := w.Run()
 

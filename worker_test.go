@@ -24,21 +24,6 @@ func TestNew(t *testing.T) {
 	})
 }
 
-func TestIsUnordered(t *testing.T) {
-	Convey("Given worker manager", t, func() {
-		w := New(2)
-
-		Convey("When isUnorderd is called", func() {
-			w.IsUnordered()
-
-			Convey("Then flag should be set", func() {
-				So(w.isUnorderd, ShouldBeTrue)
-
-			})
-		})
-	})
-}
-
 func TestRun(t *testing.T) {
 	Convey("Given default processes", t, func() {
 		f := func(name string, num int) func() (interface{}, error) {
@@ -61,9 +46,11 @@ func TestRun(t *testing.T) {
 				ps[i] = p
 				w.Add(ps[i].Exec)
 			}
-			err := w.Run()
+			errC := w.Run()
 
 			Convey("Then results should be set", func() {
+				So(errC, ShouldNotBeNil)
+				err := <-errC
 				So(err, ShouldBeNil)
 				for i := range ps {
 					msg := ps[i].Result.(string)
@@ -86,17 +73,17 @@ func TestRun(t *testing.T) {
 				ps[i] = p
 				w.Add(ps[i].Exec)
 			}
-			err := w.Run()
+			errC := w.Run()
 
 			Convey("Then results should be set", func() {
-				So(err, ShouldNotBeNil)
+				So(errC, ShouldNotBeNil)
+				err := <-errC
 				So(err.Error(), ShouldEqual, "Invalid param")
 			})
 		})
 
 		Convey("When adding and run with invalid process as unordered", func() {
 			w := New(2)
-			w.IsUnordered()
 			ps := make([]*DefaultProcess, 3)
 			for i := 0; i < 3; i++ {
 				num := i
@@ -109,9 +96,12 @@ func TestRun(t *testing.T) {
 				ps[i] = p
 				w.Add(ps[i].Exec)
 			}
-			err := w.Run()
+			errC := w.Run()
 
 			Convey("Then results should be set", func() {
+				So(errC, ShouldNotBeNil)
+				err, ok := <-errC
+				So(ok, ShouldBeTrue)
 				So(err, ShouldNotBeNil)
 				So(err.Error(), ShouldEqual, "Invalid param")
 				for i := 0; i < 2; i++ {
@@ -119,38 +109,6 @@ func TestRun(t *testing.T) {
 					So(msg, ShouldEqual, "Message"+strconv.Itoa(i))
 				}
 				So(ps[2].Result, ShouldBeNil)
-			})
-		})
-	})
-}
-
-func TestErrs(t *testing.T) {
-	Convey("Given worker manager with stacked errors", t, func() {
-		f := func(num int) func() (interface{}, error) {
-			return func() (interface{}, error) {
-				return nil, errors.New("Invalid param" + strconv.Itoa(num))
-			}
-		}
-
-		w := New(2)
-		w.IsUnordered()
-		ps := make([]*DefaultProcess, 3)
-		for i := 0; i < 3; i++ {
-			p := &DefaultProcess{
-				Func: f(i),
-			}
-			ps[i] = p
-			w.Add(ps[i].Exec)
-		}
-		err := w.Run()
-
-		Convey("When getting stacked errs", func() {
-			errs := w.Errs()
-
-			Convey("Then all errors should be returned", func() {
-				So(len(errs), ShouldEqual, 3)
-				So(err.Error(), ShouldEqual, errs[2].Error())
-
 			})
 		})
 	})

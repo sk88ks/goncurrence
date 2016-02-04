@@ -5,16 +5,14 @@ type ProcessFunc func() error
 
 // WorkerManager is workers manager
 type WorkerManager struct {
-	workerNum  int
-	isUnorderd bool
-	addCount   int
-	endCount   int
-	errs       []error
-	do         chan struct{}
-	done       chan struct{}
-	end        chan struct{}
-	process    chan ProcessFunc
-	err        chan error
+	workerNum int
+	addCount  int
+	endCount  int
+	do        chan struct{}
+	done      chan struct{}
+	end       chan struct{}
+	process   chan ProcessFunc
+	err       chan error
 }
 
 // DefaultProcess is default process implementing process handler
@@ -70,11 +68,6 @@ func (w *WorkerManager) startWorker() {
 	}
 }
 
-// IsUnordered set true to isUnorderd flag
-func (w *WorkerManager) IsUnordered() {
-	w.isUnorderd = true
-}
-
 // Add adds a new process handler to be executed
 func (w *WorkerManager) Add(ps ...ProcessFunc) *WorkerManager {
 	for i := range ps {
@@ -88,35 +81,27 @@ func (w *WorkerManager) Add(ps ...ProcessFunc) *WorkerManager {
 
 // Run execute all processes
 // If isUnorderd is true and occurred error, last stacked is returned
-func (w *WorkerManager) Run() error {
+func (w *WorkerManager) Run() chan error {
 	// Start all processes
 	close(w.do)
 
-	for {
-		select {
-		case err := <-w.err:
-			w.errs = append(w.errs, err)
-			if !w.isUnorderd {
-				return err
+	errChan := make(chan error)
+
+	go func() {
+		for {
+			select {
+			case err := <-w.err:
+				errChan <- err
+			case <-w.end:
+				w.endCount++
 			}
-		case <-w.end:
-			w.endCount++
+
+			if w.endCount == w.addCount {
+				close(errChan)
+				break
+			}
 		}
+	}()
 
-		if w.endCount == w.addCount {
-			break
-		}
-	}
-
-	l := len(w.errs)
-	if l > 0 {
-		return w.errs[l-1]
-	}
-
-	return nil
-}
-
-// Errs returns all stacked errors
-func (w *WorkerManager) Errs() []error {
-	return w.errs
+	return errChan
 }

@@ -1,47 +1,39 @@
 package goncurrency
 
+import "reflect"
+
 // ProcessFunc is an function that would be executed as a process
-type ProcessFunc func() error
+type ProcessFunc func() (interface{}, error)
 
 // WorkerManager is workers manager
 type WorkerManager struct {
 	workerNum int
 	addCount  int
-	endCount  int
-	do        chan struct{}
 	done      chan struct{}
-	end       chan struct{}
 	process   chan ProcessFunc
-	err       chan error
+	result    chan ProcessResult
 }
 
-// DefaultProcess is default process implementing process handler
-type DefaultProcess struct {
-	Func   func() (interface{}, error)
-	Result interface{}
+// ProcessResult is result of processes
+type ProcessResult struct {
+	v   reflect.Value
+	err error
 }
 
-// Exec executes job process
-func (d *DefaultProcess) Exec() error {
-	res, err := d.Func()
-	if err != nil {
-		return err
-	}
-
-	d.Result = res
-
-	return nil
+// ProcessIterator is iterator of processes results
+type ProcessIterator struct {
+	wm       *WorkerManager
+	endCount int
+	result   *ProcessResult
 }
 
 // New creates a new worker manager
 func New(workerNum int) *WorkerManager {
 	w := &WorkerManager{
 		workerNum: workerNum,
-		do:        make(chan struct{}),
 		done:      make(chan struct{}),
-		end:       make(chan struct{}),
 		process:   make(chan ProcessFunc),
-		err:       make(chan error),
+		result:    make(chan ProcessResult),
 	}
 
 	// create workers
@@ -53,15 +45,14 @@ func New(workerNum int) *WorkerManager {
 }
 
 func (w *WorkerManager) startWorker() {
-	<-w.do
 	for {
 		select {
 		case p := <-w.process:
-			err := p()
-			if err != nil {
-				w.err <- err
+			res, err := p()
+			w.result <- ProcessResult{
+				v:   reflect.ValueOf(res),
+				err: err,
 			}
-			w.end <- struct{}{}
 		case <-w.done:
 			return
 		}
@@ -71,37 +62,45 @@ func (w *WorkerManager) startWorker() {
 // Add adds a new process handler to be executed
 func (w *WorkerManager) Add(ps ...ProcessFunc) *WorkerManager {
 	for i := range ps {
-		go func() {
-			w.process <- ps[i]
-		}()
+		go func(pf ProcessFunc) {
+			w.process <- pf
+		}(ps[i])
 		w.addCount++
 	}
 	return w
 }
 
-// Run execute all processes
-// If isUnorderd is true and occurred error, last stacked is returned
-func (w *WorkerManager) Run() chan error {
-	// Start all processes
-	close(w.do)
+// Iter gets iterator for processes results
+func (w *WorkerManager) Iter() *ProcessIterator {
+	return &ProcessIterator{
+		wm: w,
+	}
+}
 
-	errChan := make(chan error)
+// Next iterate processes results
+func (iter *ProcessIterator) Next() bool {
+	if iter.wm.addCount <= iter.endCount {
+		close(iter.wm.done)
+		close(iter.wm.result)
+		return false
+	}
+	res := <-iter.wm.result
+	iter.result = &res
+	iter.endCount++
+	return true
+}
 
-	go func() {
-		for {
-			select {
-			case err := <-w.err:
-				errChan <- err
-			case <-w.end:
-				w.endCount++
-			}
+// Result set result to destination data
+func (iter *ProcessIterator) Result(dst interface{}) error {
+	if iter.result.err != nil {
+		return iter.result.err
+	}
 
-			if w.endCount == w.addCount {
-				close(errChan)
-				break
-			}
-		}
-	}()
+	dstValue := reflect.ValueOf(dst)
+	if dstValue.Kind() != reflect.Ptr {
+		return nil
+	}
 
-	return errChan
+	dstValue.Elem().Set(iter.result.v)
+	return nil
 }

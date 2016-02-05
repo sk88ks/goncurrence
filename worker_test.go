@@ -24,92 +24,154 @@ func TestNew(t *testing.T) {
 	})
 }
 
-func TestRun(t *testing.T) {
-	Convey("Given default processes", t, func() {
-		f := func(name string, num int) func() (interface{}, error) {
-			msg := name + strconv.Itoa(num)
-			return func() (interface{}, error) {
-				if num == 99 {
-					return nil, errors.New("Invalid param")
-				}
-				return msg, nil
-			}
+func TestWorkerManager_Add(t *testing.T) {
+	Convey("Given worker manager and process funcs", t, func() {
+		w := New(1)
+		fs := []ProcessFunc{
+			func() (interface{}, error) {
+				return nil, nil
+			},
+			func() (interface{}, error) {
+				return nil, nil
+			},
 		}
 
-		Convey("When adding and run with all valid processes", func() {
-			w := New(2)
-			ps := make([]DefaultProcess, 3)
-			for i := 0; i < 3; i++ {
-				p := DefaultProcess{
-					Func: f("Message", i),
-				}
-				ps[i] = p
-				w.Add(ps[i].Exec)
-			}
-			errC := w.Run()
+		Convey("When add funcs", func() {
+			w.Add(fs...)
 
-			Convey("Then results should be set", func() {
-				So(errC, ShouldNotBeNil)
-				err := <-errC
-				So(err, ShouldBeNil)
-				for i := range ps {
-					msg := ps[i].Result.(string)
-					So(msg, ShouldEqual, "Message"+strconv.Itoa(i))
-				}
-			})
-		})
+			Convey("Then count should be increased", func() {
+				So(w.addCount, ShouldEqual, len(fs))
 
-		Convey("When adding and run with invalid process", func() {
-			w := New(2)
-			ps := make([]*DefaultProcess, 3)
-			for i := 0; i < 3; i++ {
-				num := i
-				if i == 2 {
-					num = 99
-				}
-				p := &DefaultProcess{
-					Func: f("Message", num),
-				}
-				ps[i] = p
-				w.Add(ps[i].Exec)
-			}
-			errC := w.Run()
-
-			Convey("Then results should be set", func() {
-				So(errC, ShouldNotBeNil)
-				err := <-errC
-				So(err.Error(), ShouldEqual, "Invalid param")
-			})
-		})
-
-		Convey("When adding and run with invalid process as unordered", func() {
-			w := New(2)
-			ps := make([]*DefaultProcess, 3)
-			for i := 0; i < 3; i++ {
-				num := i
-				if i == 2 {
-					num = 99
-				}
-				p := &DefaultProcess{
-					Func: f("Message", num),
-				}
-				ps[i] = p
-				w.Add(ps[i].Exec)
-			}
-			errC := w.Run()
-
-			Convey("Then results should be set", func() {
-				So(errC, ShouldNotBeNil)
-				err, ok := <-errC
-				So(ok, ShouldBeTrue)
-				So(err, ShouldNotBeNil)
-				So(err.Error(), ShouldEqual, "Invalid param")
-				for i := 0; i < 2; i++ {
-					msg := ps[i].Result.(string)
-					So(msg, ShouldEqual, "Message"+strconv.Itoa(i))
-				}
-				So(ps[2].Result, ShouldBeNil)
 			})
 		})
 	})
+}
+
+func TestWorkerManager_Iter(t *testing.T) {
+	Convey("Given worker manager and added process funcs", t, func() {
+		w := New(1)
+		fs := []ProcessFunc{
+			func() (interface{}, error) {
+				return nil, nil
+			},
+			func() (interface{}, error) {
+				return nil, nil
+			},
+		}
+		w.Add(fs...)
+
+		Convey("When get iterator", func() {
+			iter := w.Iter()
+
+			Convey("Then count should be increased", func() {
+				So(iter, ShouldNotBeNil)
+				So(iter.wm, ShouldNotBeNil)
+
+			})
+		})
+	})
+}
+
+func TestProcessIterator_Next(t *testing.T) {
+	Convey("Given iterator having processes", t, func() {
+		w := New(1)
+		fs := []ProcessFunc{
+			func() (interface{}, error) {
+				return nil, nil
+			},
+			func() (interface{}, error) {
+				return nil, nil
+			},
+		}
+		w.Add(fs...)
+		iter := w.Iter()
+
+		Convey("When iterate next process result", func() {
+			var count int
+			for iter.Next() {
+				count++
+			}
+
+			Convey("Then count should be increased", func() {
+				So(count, ShouldEqual, len(fs))
+
+			})
+		})
+	})
+}
+
+func TestProcessIterator_Result(t *testing.T) {
+	Convey("Given iterator having processes", t, func() {
+		w := New(1)
+		type res struct {
+			Name string
+			Age  int
+		}
+		fs := []ProcessFunc{
+			func() (interface{}, error) {
+				return res{
+					"test001",
+					1,
+				}, nil
+			},
+			func() (interface{}, error) {
+				return res{
+					"test002",
+					2,
+				}, nil
+			},
+			func() (interface{}, error) {
+				return nil, errors.New("Test error")
+			},
+		}
+		w.Add(fs...)
+		iter := w.Iter()
+
+		Convey("When get result by iterated value", func() {
+			var count int
+			var errs []error
+			var resulsts []res
+			var r res
+			for iter.Next() {
+				count++
+				err := iter.Result(&r)
+				if err != nil {
+					errs = append(errs, err)
+					continue
+				}
+				resulsts = append(resulsts, r)
+			}
+
+			Convey("Then result and errors should be set correctly", func() {
+				So(count, ShouldEqual, len(fs))
+				So(len(errs), ShouldEqual, 1)
+				So(errs[0].Error(), ShouldEqual, "Test error")
+				So(len(resulsts), ShouldEqual, 2)
+				for i := range resulsts {
+					So(resulsts[i].Name, ShouldEqual, "test00"+strconv.Itoa(resulsts[i].Age))
+				}
+
+			})
+		})
+
+		Convey("When get result with un pointer dst", func() {
+			var count int
+			var resulsts []res
+			var r res
+			for iter.Next() {
+				count++
+				iter.Result(r)
+				if r.Name != "" {
+					resulsts = append(resulsts, r)
+				}
+			}
+
+			Convey("Then count should be increased", func() {
+				So(count, ShouldEqual, len(fs))
+				So(len(resulsts), ShouldEqual, 0)
+
+			})
+		})
+	})
+
 }

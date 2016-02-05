@@ -3,7 +3,7 @@
 [![Build Status](https://travis-ci.org/sk88ks/goncurrency.svg?branch=master)](https://travis-ci.org/sk88ks/goncurrency)
 [![Coverage Status](https://coveralls.io/repos/sk88ks/goncurrency/badge.svg?branch=master&service=github)](https://coveralls.io/github/sk88ks/goncurrency?branch=master)
 
-goncurrency enables you to implement concurrnt processes more simple.
+goncurrency enables you to implement concurrnt processes more easily.
 
 Current API Documents:
 
@@ -26,46 +26,40 @@ import(
   "github.com/sk88ks/goncurrency"
 )
 
-	workerNum := runtime.NumCPU()
-	w := goncurrency.New(workerNum)
+	w := goncurrency.New(1)
 
 	// DefaultProcess implementing ProcessHandler interface
-	processes := []*goncurrency.DefaultProcess{
-		&goncurrency.DefaultProcess{
-			Func: func() (interface{}, error) {
-				return "result 0", nil
-			},
+	processes := []goncurrency.ProcessFunc{
+		func() (interface{}, error) {
+			return "result 0", nil
 		},
-		&goncurrency.DefaultProcess{
-			Func: func() (interface{}, error) {
-				return "result 1", nil
-			},
+		func(interface{}, error) {
+			return "result 1", nil
 		},
-		&goncurrency.DefaultProcess{
-			Func: func() (interface{}, error) {
-				return "result 2", nil
-			},
+		func() (interface{}, error) {
+			return "result 2", nil
 		},
 	}
 
-	for i := range processes {
-		w.Add(processes[i].Exec)
-	}
+	w.Add(processes...)
 
-	err := w.Run()
-	if err != nil {
-		panic(err)
-	}
+    iter := w.Iter()
 
-	for i := range processes {
-		result := processes[i].Result.(string)
-		fmt.Printf("Result %d: %s\n", i, result)
-	}     
+    var count int
+    var result string
+    for iter.Next() {
+        err := iter.Result(&result)
+        if err != nil {
+            panic(err)
+        }
+		fmt.Printf("Result %d: %s\n", count, result)
+        count++
+    }
 
-    /* Results
-      Result 0: result 0
-      Result 1: result 1
-      Result 2: result 2
+    /* Results unordered
+      Result: result 0
+      Result: result 1
+      Result: result 2
     */
 
 ```

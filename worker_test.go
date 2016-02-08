@@ -24,6 +24,22 @@ func TestNew(t *testing.T) {
 	})
 }
 
+func TestWorkerManager_Release(t *testing.T) {
+	Convey("Given worker manager", t, func() {
+		num := 2
+		w := New(num)
+
+		Convey("When release workers", func() {
+			w.Release()
+
+			Convey("Then worker open status should be false", func() {
+				So(w.open, ShouldBeFalse)
+
+			})
+		})
+	})
+}
+
 func TestWorkerManager_Add(t *testing.T) {
 	Convey("Given worker manager and process funcs", t, func() {
 		w := New(1)
@@ -94,6 +110,22 @@ func TestProcessIterator_Next(t *testing.T) {
 
 			Convey("Then count should be increased", func() {
 				So(count, ShouldEqual, len(fs))
+
+			})
+		})
+
+		Convey("When iterate next process result after close", func() {
+			var count int
+			for iter.Next() {
+				count++
+				if count == 1 {
+					w.Release()
+				}
+			}
+
+			Convey("Then count should be increased", func() {
+				So(count, ShouldEqual, 1)
+				So(iter.wm.open, ShouldBeFalse)
 
 			})
 		})

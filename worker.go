@@ -7,6 +7,7 @@ type ProcessFunc func() (interface{}, error)
 
 // WorkerManager is workers manager
 type WorkerManager struct {
+	open      bool
 	workerNum int
 	addCount  int
 	done      chan struct{}
@@ -30,6 +31,7 @@ type ProcessIterator struct {
 // New creates a new worker manager
 func New(workerNum int) *WorkerManager {
 	w := &WorkerManager{
+		open:      true,
 		workerNum: workerNum,
 		done:      make(chan struct{}),
 		process:   make(chan ProcessFunc),
@@ -59,6 +61,15 @@ func (w *WorkerManager) startWorker() {
 	}
 }
 
+// Release releases all worker resource usage
+func (w *WorkerManager) Release() {
+	if !w.open {
+		return
+	}
+	close(w.done)
+	w.open = false
+}
+
 // Add adds a new process handler to be executed
 func (w *WorkerManager) Add(ps ...ProcessFunc) *WorkerManager {
 	for i := range ps {
@@ -79,11 +90,14 @@ func (w *WorkerManager) Iter() *ProcessIterator {
 
 // Next iterate processes results
 func (iter *ProcessIterator) Next() bool {
-	if iter.wm.addCount <= iter.endCount {
-		close(iter.wm.done)
-		close(iter.wm.result)
+	if !iter.wm.open {
 		return false
 	}
+
+	if iter.wm.addCount <= iter.endCount {
+		return false
+	}
+
 	res := <-iter.wm.result
 	iter.result = &res
 	iter.endCount++

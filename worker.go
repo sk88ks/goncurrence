@@ -10,6 +10,7 @@ type WorkerManager struct {
 	open      bool
 	workerNum int
 	addCount  int
+	endCount  int
 	done      chan struct{}
 	process   chan ProcessFunc
 	result    chan ProcessResult
@@ -23,9 +24,8 @@ type ProcessResult struct {
 
 // ProcessIterator is iterator of processes results
 type ProcessIterator struct {
-	wm       *WorkerManager
-	endCount int
-	result   *ProcessResult
+	wm     *WorkerManager
+	result *ProcessResult
 }
 
 // New creates a new worker manager
@@ -94,13 +94,13 @@ func (iter *ProcessIterator) Next() bool {
 		return false
 	}
 
-	if iter.wm.addCount <= iter.endCount {
+	if iter.wm.addCount <= iter.wm.endCount {
 		return false
 	}
 
 	res := <-iter.wm.result
 	iter.result = &res
-	iter.endCount++
+	iter.wm.endCount++
 	return true
 }
 

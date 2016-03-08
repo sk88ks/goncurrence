@@ -147,7 +147,7 @@ func TestProcessIterator_Result(t *testing.T) {
 				}, nil
 			},
 			func() (interface{}, error) {
-				return res{
+				return &res{
 					"test002",
 					2,
 				}, nil

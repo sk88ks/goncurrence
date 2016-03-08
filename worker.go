@@ -72,6 +72,10 @@ func (w *WorkerManager) Release() {
 
 // Add adds a new process handler to be executed
 func (w *WorkerManager) Add(ps ...ProcessFunc) *WorkerManager {
+	if !w.open {
+		return nil
+	}
+
 	for i := range ps {
 		go func(pf ProcessFunc) {
 			w.process <- pf
@@ -115,6 +119,11 @@ func (iter *ProcessIterator) Result(dst interface{}) error {
 		return nil
 	}
 
-	dstValue.Elem().Set(iter.result.v)
+	v := iter.result.v
+	if iter.result.v.Kind() == reflect.Ptr {
+		v = iter.result.v.Elem()
+	}
+
+	dstValue.Elem().Set(v)
 	return nil
 }
